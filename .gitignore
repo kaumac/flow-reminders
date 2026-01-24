@@ -1,0 +1,17 @@
+# JavaScript
+node_modules
+dist
+.turbo
+.DS_Store
+.env
+.env.*.local
+.next
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+venv/
+.venv/
+*.egg-info/
+.pytest_cache/
