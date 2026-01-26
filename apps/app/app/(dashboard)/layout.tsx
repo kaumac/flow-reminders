@@ -9,7 +9,7 @@ export default function DashboardLayout({
   return (
     <>
       {/* Black top section */}
-      <div className="absolute top-0 left-0 right-0 h-1/3 bg-[#111111] z-0" />
+      <div className="absolute top-0 left-0 right-0 h-1/3 bg-foreground z-0" />
       
       <div className="relative z-10 flex h-full p-4 gap-4">
         <Sidebar className="hidden md:flex shrink-0 h-full rounded-2xl shadow-xl border-none" />
