@@ -6,35 +6,147 @@ import {
   PlusCircle,
   Users,
   Sparkles,
+  LogOut,
   type LucideIcon
 } from "lucide-react"
+import { useUser } from "@/hooks/use-user"
+import { countryCodeEmoji } from "country-code-emoji"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useState } from "react"
+import Cookies from "js-cookie"
+import { useRouter } from "next/navigation"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className, ...props }: SidebarProps) {
+  const { data: user } = useUser()
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false)
+  const router = useRouter()
+
+  const handleLogout = () => {
+    Cookies.remove("session_token")
+    router.push("/signin")
+  }
+
+  // Simplified country code to alpha-2 map for common ones
+  const countryMap: Record<string, string> = {
+    "1": "US",
+    "44": "GB",
+    "55": "BR",
+    "33": "FR",
+    "49": "DE",
+    "81": "JP",
+    "86": "CN",
+    "91": "IN",
+    "7": "RU",
+    "54": "AR",
+    "61": "AU",
+  }
+
+  const renderPhoneNumber = () => {
+    if (!user?.phone_number) return "User"
+    const phone = user.phone_number
+    const match = phone.match(/^\+(\d{1,3})/)
+    if (match) {
+      const code = match[1]
+      const alpha2 = countryMap[code]
+      if (alpha2) {
+        return (
+          <span className="flex items-center gap-2">
+            <span>{countryCodeEmoji(alpha2)}</span>
+            <span>{phone}</span>
+          </span>
+        )
+      }
+    }
+    return phone
+  }
+
   return (
-    <div className={cn("pb-12 min-h-0 bg-white w-24 flex flex-col items-center", className)} {...props}>
-      <div className="flex flex-col items-center w-full py-10">
-        <div className="mb-10">
-          <div className="bg-black text-white p-2.5 rounded-full shadow-lg">
-            <Sparkles className="h-6 w-6" />
+    <>
+      <div className={cn("pb-12 min-h-0 bg-white w-24 flex flex-col items-center", className)} {...props}>
+        <div className="flex flex-col items-center w-full py-10">
+          <div className="mb-10">
+            <div className="bg-black text-white p-2.5 rounded-full shadow-lg">
+              <Sparkles className="h-6 w-6" />
+            </div>
+          </div>
+          
+          <div className="w-full flex flex-col items-center">
+            <NavButton icon={Home} label="Home" active />
+            <div className="w-8 h-px bg-gray-100 my-4" />
+            <NavButton icon={PlusCircle} label="Reminders" />
           </div>
         </div>
         
-        <div className="w-full flex flex-col items-center">
-          <NavButton icon={Home} label="Home" active />
-          <div className="w-8 h-px bg-gray-100 my-4" />
-          <NavButton icon={PlusCircle} label="Reminders" />
+        <div className="mt-auto w-full flex flex-col items-center px-4">
+          <div className="w-8 h-px bg-gray-100 mb-8" />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="h-12 w-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
+                <Users className="h-6 w-6 text-gray-500" />
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="end" className="w-56 ml-2">
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">Account</p>
+                  <p className="text-xs leading-none text-muted-foreground mt-1">
+                    {renderPhoneNumber()}
+                  </p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                className="text-red-600 focus:text-red-600 cursor-pointer"
+                onSelect={() => setShowLogoutDialog(true)}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      
-      <div className="mt-auto w-full flex flex-col items-center px-4">
-        <div className="w-8 h-px bg-gray-100 mb-8" />
-        <div className="h-12 w-12 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
-          <Users className="h-6 w-6 text-gray-500" />
-        </div>
-      </div>
-    </div>
+
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will log you out of your account. You will need to sign in again to access your reminders.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleLogout}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 

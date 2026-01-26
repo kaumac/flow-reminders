@@ -78,6 +78,10 @@ def get_current_user(request: Request, session: Session = Depends(get_session)):
         
     return user
 
+@app.get("/me")
+def get_me(user: User = Depends(get_current_user)):
+    return user
+
 class CreateReminderRequest(BaseModel):
     title: str
     description: Optional[str] = None
