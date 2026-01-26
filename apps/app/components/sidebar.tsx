@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { useUser } from "@/hooks/use-user"
 import { countryCodeEmoji } from "country-code-emoji"
+import { parsePhoneNumber, type CountryCode } from "libphonenumber-js"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,38 +46,25 @@ export function Sidebar({ className, ...props }: SidebarProps) {
     router.push("/signin")
   }
 
-  // Simplified country code to alpha-2 map for common ones
-  const countryMap: Record<string, string> = {
-    "1": "US",
-    "44": "GB",
-    "55": "BR",
-    "33": "FR",
-    "49": "DE",
-    "81": "JP",
-    "86": "CN",
-    "91": "IN",
-    "7": "RU",
-    "54": "AR",
-    "61": "AU",
-  }
-
   const renderPhoneNumber = () => {
     if (!user?.phone_number) return "User"
-    const phone = user.phone_number
-    const match = phone.match(/^\+(\d{1,3})/)
-    if (match) {
-      const code = match[1]
-      const alpha2 = countryMap[code]
-      if (alpha2) {
+    
+    try {
+      const phoneNumber = parsePhoneNumber(user.phone_number)
+      if (phoneNumber) {
+        const country = phoneNumber.country as CountryCode
         return (
           <span className="flex items-center gap-2">
-            <span>{countryCodeEmoji(alpha2)}</span>
-            <span>{phone}</span>
+            {country && <span>{countryCodeEmoji(country)}</span>}
+            <span>{phoneNumber.formatInternational()}</span>
           </span>
         )
       }
+    } catch (error) {
+      console.error("Error parsing phone number:", error)
     }
-    return phone
+
+    return user.phone_number
   }
 
   return (
