@@ -15,3 +15,5 @@ venv/
 .venv/
 *.egg-info/
 .pytest_cache/
+apps/app/.env.local
+apps/api/database.db

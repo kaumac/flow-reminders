@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import { api } from "@/lib/api";
 
 export default function SignInPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -14,31 +15,23 @@ export default function SignInPage() {
     setLoading(true);
 
     try {
-      // Assuming API acts as a proxy or we call it directly. 
-      // For now, hardcoding the API URL or assuming a proxy in next.config.js could be better, 
-      // but let's try direct call first or assume equivalent port.
-      // Since I don't have the exact API URL in env yet, I'll assume localhost:8000 for local dev
-      // or usage of a NEXT_PUBLIC_API_URL env var if it existed.
-      // I'll stick to a simple fetch for now.
-      
-      const res = await fetch("http://127.0.0.1:8000/signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ phone_number: phoneNumber }),
+
+      // Using the shared axios instance
+      const { data } = await api.post("/signin", {
+        phone_number: phoneNumber,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        console.log("Login success:", data);
-        // Set a cookie for the session
-        Cookies.set('session_token', data.user.phone_number, { expires: 7 }); // Expires in 7 days
-        // Navigate to dashboard on success
-        router.push("/");
+      console.log("Login success:", data);
+      
+      // key change: use session_token from response, not phone_number
+      // Also, ideally the cookie should be httpOnly set by the server, 
+      // but if we are setting it here for now (as per current architecture), use the token.
+      if (data.session_token) {
+         Cookies.set('session_token', data.session_token, { expires: 7 });;
+         router.push("/");
       } else {
-        console.error("Login failed");
-        alert("Login failed");
+         console.error("No session token received");
+         alert("Login failed: No session token");
       }
     } catch (error) {
       console.error("An error occurred", error);

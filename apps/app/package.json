@@ -10,8 +10,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/react-form": "^1.27.7",
+    "@tanstack/react-query": "^5.90.20",
+    "@tanstack/react-query-devtools": "^5.91.2",
+    "@tanstack/zod-form-adapter": "^0.42.1",
+    "axios": "^1.13.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "js-cookie": "^3.0.5",
@@ -19,7 +26,9 @@
     "next": "^16.1.4",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "vaul": "^1.1.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.6",
