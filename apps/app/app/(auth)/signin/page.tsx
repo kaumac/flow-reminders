@@ -3,19 +3,35 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
+import axios from "axios";
+import { isValidPhoneNumber } from "libphonenumber-js";
 import { api } from "@/lib/api";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 export default function SignInPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (!phoneNumber) {
+      setError("Phone number is required");
+      return;
+    }
+
+    // Strict E.164 and validity check using libphonenumber-js
+    if (!isValidPhoneNumber(phoneNumber)) {
+      setError("The phone number you entered is invalid. Please select a country on the dropdown and enter a valid phone number.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-
       // Using the shared axios instance
       const { data } = await api.post("/signin", {
         phone_number: phoneNumber,
@@ -23,19 +39,27 @@ export default function SignInPage() {
 
       console.log("Login success:", data);
       
-      // key change: use session_token from response, not phone_number
-      // Also, ideally the cookie should be httpOnly set by the server, 
-      // but if we are setting it here for now (as per current architecture), use the token.
       if (data.session_token) {
-         Cookies.set('session_token', data.session_token, { expires: 7 });;
+         Cookies.set('session_token', data.session_token, { expires: 7 });
          router.push("/");
       } else {
-         console.error("No session token received");
-         alert("Login failed: No session token");
+         setError("Login failed: No session token received");
       }
-    } catch (error) {
-      console.error("An error occurred", error);
-      alert("An error occurred");
+    } catch (err: unknown) {
+      console.error("An error occurred", err);
+      let message = "An error occurred during sign in";
+      
+      if (axios.isAxiosError(err)) {
+        if (err.response?.data?.detail) {
+          message = typeof err.response.data.detail === "string"
+            ? err.response.data.detail
+            : JSON.stringify(err.response.data.detail);
+        }
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+      
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -49,15 +73,16 @@ export default function SignInPage() {
           <label htmlFor="phone" className="text-sm font-medium">
             Phone Number
           </label>
-          <input
+          <PhoneInput
             id="phone"
-            type="tel"
-            placeholder="+1234567890"
-            className="rounded-md border p-2"
+            placeholder="Example: +1 234 567 890"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            required
+            onChange={setPhoneNumber}
+            className={error ? "border-red-500" : ""}
           />
+          {error && (
+            <p className="text-sm text-red-500 font-medium">{error}</p>
+          )}
         </div>
         <button
           type="submit"

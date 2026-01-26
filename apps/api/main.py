@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
 from src.database import create_db_and_tables, get_session
 from src.models import User, Reminder, Session as DbSession
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+import phonenumbers
 from fastapi import Request
 
 @asynccontextmanager
@@ -32,6 +33,21 @@ app.add_middleware(
 
 class SigninRequest(BaseModel):
     phone_number: str
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_e164(cls, v: str) -> str:
+        try:
+            # Parse the phone number
+            parsed_number = phonenumbers.parse(v)
+            # Check if it's a valid number and in E.164 format
+            if not (phonenumbers.is_valid_number(parsed_number) and v.startswith('+')):
+                raise ValueError("Invalid phone number format")
+            
+            # Format to E.164 to be sure
+            return phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            raise ValueError("Phone number must be a valid E.164 formatted number (e.g. +1234567890)")
 
 @app.get("/")
 def read_root():
