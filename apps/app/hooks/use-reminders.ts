@@ -7,6 +7,7 @@ export interface Reminder {
   title: string;
   description?: string;
   scheduled_time?: string;
+  phone_to_call: string;
   user_id: number;
 }
 
@@ -14,6 +15,7 @@ export interface CreateReminderPayload {
   title: string;
   description?: string;
   scheduled_time?: string;
+  phone_to_call: string;
 }
 
 export function useCreateReminder() {

@@ -49,11 +49,11 @@ def execute_reminder_call(reminder_id: int):
             print(f"User for reminder {reminder_id} not found")
             return
 
-        print(f"Executing call for reminder {reminder.id} to {user.phone_number}")
+        print(f"Executing call for reminder {reminder.id} to {reminder.phone_to_call}")
         
         try:
             make_reminder_call(
-                phone_number=user.phone_number,
+                phone_number=reminder.phone_to_call,
                 title=reminder.title,
                 description=reminder.description or ""
             )
@@ -153,6 +153,7 @@ class CreateReminderRequest(BaseModel):
     title: str
     description: Optional[str] = None
     scheduled_time: datetime
+    phone_to_call: str
 
 @app.post("/reminders")
 async def create_reminder(
@@ -165,6 +166,7 @@ async def create_reminder(
         description=reminder_data.description,
         scheduled_time=reminder_data.scheduled_time,
         status="pending",
+        phone_to_call=reminder_data.phone_to_call,
         user_id=user.id
     )
     session.add(reminder)
@@ -175,7 +177,7 @@ async def create_reminder(
     scheduler.add_job(
         execute_reminder_call,
         "date",
-        run_date=reminder.scheduled_time,
+        run_date=reminder_data.scheduled_time,
         args=[reminder.id],
         id=f"reminder_{reminder.id}"
     )

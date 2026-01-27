@@ -32,4 +32,5 @@ class Reminder(SQLModel, table=True):
     title: str
     description: Optional[str] = None
     status: str = Field(default="pending")
+    phone_to_call: str = Field()
     user_id: int = Field(foreign_key="user.id")

@@ -17,3 +17,4 @@ venv/
 .pytest_cache/
 apps/app/.env.local
 apps/api/database.db
+apps/api/scheduler_jobs.db

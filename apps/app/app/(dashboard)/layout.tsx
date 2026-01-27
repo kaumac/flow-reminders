@@ -13,8 +13,11 @@ export default function DashboardLayout({
       
       <div className="relative z-10 flex h-full p-4 gap-4">
         <Sidebar className="hidden md:flex shrink-0 h-full rounded-2xl shadow-xl border-none" />
-        <div className="flex-1 flex flex-col min-h-0 px-2 md:px-4 lg:px-6 xl:px-8 2xl:px-12">
-          <Header />
+        <div className="flex-1 flex flex-col min-h-0 px-2 md:px-6 lg:px-12 xl:px-16 2xl:px-24">
+          <div className="mb-12 mt-4 text-white">
+            <h1 className="text-3xl font-bold mb-1">Hi there! 👋</h1>
+            <p className="opacity-80 text-lg">Let's create your first reminder</p>
+          </div>
           <main className="flex-1 pb-2 min-h-0 overflow-hidden">
              <div className="h-full w-full bg-white rounded-xl overflow-auto border border-border shadow-sm p-6">
                  {children}
