@@ -38,12 +38,53 @@ import { parsePhoneNumber, isValidPhoneNumber, type CountryCode } from "libphone
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string(),
-  scheduled_date: z.date().optional(),
+  description: z.string().min(1, "Description is required"),
+  scheduled_date: z.custom<Date>((v) => v instanceof Date, "Date is required"),
   scheduled_time: z.string(),
   timezone: z.string(),
   phone_type: z.enum(["user", "custom"]),
   custom_phone: z.string(),
+}).superRefine((data, ctx) => {
+  if (data.scheduled_date) {
+    try {
+      const dateStr = format(data.scheduled_date, "yyyy-MM-dd")
+      const time = data.scheduled_time || "10:30"
+      const dateTimeStr = `${dateStr}T${time}`
+      
+      let scheduledTime: Date
+      if (data.timezone) {
+        scheduledTime = fromZonedTime(dateTimeStr, data.timezone)
+      } else {
+        scheduledTime = new Date(dateTimeStr)
+      }
+
+      if (scheduledTime <= new Date()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Time must be in the future",
+          path: ["scheduled_date"],
+        })
+      }
+    } catch (e) {
+      // Ignore date parsing errors
+    }
+  }
+
+  if (data.phone_type === "custom") {
+    if (!data.custom_phone) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Phone number is required",
+        path: ["custom_phone"],
+      })
+    } else if (!isValidPhoneNumber(data.custom_phone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid phone number",
+        path: ["custom_phone"],
+      })
+    }
+  }
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -64,7 +105,24 @@ export function ReminderDrawer() {
       phone_type: "user",
       custom_phone: "",
     } as FormValues,
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
+      // Manual validation on submit
+      const validation = formSchema.safeParse(value)
+      if (!validation.success) {
+        const errors = validation.error.flatten().fieldErrors
+        // Set errors for fields
+        Object.keys(value).forEach((key) => {
+          const fieldKey = key as keyof typeof value
+          const fieldErrors = errors[fieldKey] // access specific field error
+          
+          formApi.setFieldMeta(fieldKey, (prev) => ({
+            ...prev,
+            errors: fieldErrors ? fieldErrors : [],
+          }))
+        })
+        return
+      }
+
       try {
         let scheduled_time_iso: string | undefined
 
@@ -96,14 +154,9 @@ export function ReminderDrawer() {
           ? user?.phone_number 
           : value.custom_phone
 
+        // Validation already handled by schema above, but keeping safety check
         if (!phone_to_call) {
           console.error("No phone number selected")
-          return
-        }
-
-        if (value.phone_type === "custom" && !isValidPhoneNumber(phone_to_call)) {
-          // This should be handled by validation, but double checking
-          console.error("Invalid custom phone number")
           return
         }
 
@@ -119,9 +172,7 @@ export function ReminderDrawer() {
         console.error("Failed to create reminder", error)
       }
     },
-    validators: {
-      onChange: formSchema,
-    },
+
   } as any)
 
   return (
@@ -147,12 +198,7 @@ export function ReminderDrawer() {
           className="flex flex-col flex-1 min-h-0"
         >
           <div className="p-4 pb-0 flex-1 overflow-y-auto space-y-4">
-            <form.Field
-              name="title"
-              validators={{
-                onChange: formSchema.shape.title,
-              }}
-            >
+            <form.Field name="title">
               {(field) => (
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
@@ -166,18 +212,13 @@ export function ReminderDrawer() {
                   />
                   {field.state.meta.errors ? (
                     <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.join(", ")}
+                      {field.state.meta.errors.map((e) => e?.message || e).join(", ")}
                     </p>
                   ) : null}
                 </div>
               )}
             </form.Field>
-            <form.Field
-              name="description"
-              validators={{
-                onChange: formSchema.shape.description,
-              }}
-            >
+            <form.Field name="description">
               {(field) => (
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
@@ -191,7 +232,7 @@ export function ReminderDrawer() {
                   />
                   {field.state.meta.errors ? (
                     <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.join(", ")}
+                      {field.state.meta.errors.map((e) => e?.message || e).join(", ")}
                     </p>
                   ) : null}
                 </div>
@@ -260,6 +301,20 @@ export function ReminderDrawer() {
               </form.Field>
             </FieldGroup>
 
+            <form.Subscribe
+              selector={(state) => state.fieldMeta.scheduled_date?.errors}
+            >
+              {(errors) => {
+                const errorMsg = errors?.map((e) => e?.message || String(e)).join(", ")
+                if (!errorMsg) return null
+                return (
+                  <div className="mt-2 text-center">
+                    <Badge variant="destructive">{errorMsg}</Badge>
+                  </div>
+                )
+              }}
+            </form.Subscribe>
+
             <Separator className="my-8" />
 
             <div className="space-y-4">
@@ -307,13 +362,6 @@ export function ReminderDrawer() {
                       {field.state.value === "custom" && (
                         <form.Field 
                           name="custom_phone"
-                          validators={{
-                            onChange: ({ value }) => {
-                              if (!value) return "Phone number is required"
-                              if (!isValidPhoneNumber(value)) return "Invalid phone number"
-                              return undefined
-                            }
-                          }}
                         >
                           {(customField) => (
                             <div className="pl-7 space-y-2">

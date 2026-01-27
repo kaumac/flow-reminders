@@ -153,9 +153,35 @@ def get_me(user: User = Depends(get_current_user)):
 
 class CreateReminderRequest(BaseModel):
     title: str
-    description: Optional[str] = None
+    description: str
     scheduled_time: datetime
     phone_to_call: str
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title is required")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Description is required")
+        return v
+
+    @field_validator("scheduled_time")
+    @classmethod
+    def validate_future_date(cls, v: datetime) -> datetime:
+        if v.tzinfo:
+            now = datetime.now(v.tzinfo)
+        else:
+            now = datetime.now()
+        
+        if v <= now:
+            raise ValueError("Scheduled time must be in the future")
+        return v
 
 @app.post("/reminders")
 async def create_reminder(
