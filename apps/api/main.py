@@ -1,12 +1,17 @@
 from contextlib import asynccontextmanager
 from typing import Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
-from src.database import create_db_and_tables, get_session, scheduler_engine
+from src.database import create_db_and_tables, get_session, scheduler_engine, SessionLocal
 from src.models import User, Reminder, Session as DbSession
+from src.services.vapi import make_reminder_call
 from pydantic import BaseModel, field_validator
 import phonenumbers
 
@@ -28,6 +33,41 @@ async def lifespan(app: FastAPI):
     print("Scheduler shut down")
 
 app = FastAPI(lifespan=lifespan)
+
+def execute_reminder_call(reminder_id: int):
+    """
+    Job function called by APScheduler.
+    """
+    with SessionLocal() as session:
+        reminder = session.exec(select(Reminder).where(Reminder.id == reminder_id)).first()
+        if not reminder:
+            print(f"Reminder {reminder_id} not found")
+            return
+
+        user = session.get(User, reminder.user_id)
+        if not user:
+            print(f"User for reminder {reminder_id} not found")
+            return
+
+        print(f"Executing call for reminder {reminder.id} to {user.phone_number}")
+        
+        try:
+            make_reminder_call(
+                phone_number=user.phone_number,
+                title=reminder.title,
+                description=reminder.description or ""
+            )
+            
+            # Update status to completed
+            reminder.status = "completed"
+            session.add(reminder)
+            session.commit()
+            print(f"Reminder {reminder.id} marked as completed")
+        except Exception as e:
+            print(f"Error triggered for reminder {reminder.id}: {e}")
+            reminder.status = "failed"
+            session.add(reminder)
+            session.commit()
 
 origins = [
     "http://localhost:3000",
@@ -112,6 +152,7 @@ def get_me(user: User = Depends(get_current_user)):
 class CreateReminderRequest(BaseModel):
     title: str
     description: Optional[str] = None
+    scheduled_time: datetime
 
 @app.post("/reminders")
 async def create_reminder(
@@ -122,11 +163,24 @@ async def create_reminder(
     reminder = Reminder(
         title=reminder_data.title,
         description=reminder_data.description,
+        scheduled_time=reminder_data.scheduled_time,
+        status="pending",
         user_id=user.id
     )
     session.add(reminder)
     session.commit()
     session.refresh(reminder)
+
+    # Schedule the job
+    scheduler.add_job(
+        execute_reminder_call,
+        "date",
+        run_date=reminder.scheduled_time,
+        args=[reminder.id],
+        id=f"reminder_{reminder.id}"
+    )
+    print(f"Scheduled job for reminder {reminder.id} at {reminder.scheduled_time}")
+
     return reminder
 
 @app.get("/reminders")

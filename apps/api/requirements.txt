@@ -3,3 +3,5 @@ uvicorn
 sqlmodel
 phonenumbers
 apscheduler
+vapi_server_sdk
+python-dotenv

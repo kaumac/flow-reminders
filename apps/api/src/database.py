@@ -14,6 +14,9 @@ scheduler_engine = create_engine(scheduler_sqlite_url, connect_args={"check_same
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
 
+def SessionLocal():
+    return Session(engine)
+
 def get_session():
-    with Session(engine) as session:
+    with SessionLocal() as session:
         yield session

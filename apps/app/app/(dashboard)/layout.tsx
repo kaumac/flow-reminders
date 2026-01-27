@@ -13,7 +13,7 @@ export default function DashboardLayout({
       
       <div className="relative z-10 flex h-full p-4 gap-4">
         <Sidebar className="hidden md:flex shrink-0 h-full rounded-2xl shadow-xl border-none" />
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 px-2 md:px-4 lg:px-6 xl:px-8 2xl:px-12">
           <Header />
           <main className="flex-1 pb-2 min-h-0 overflow-hidden">
              <div className="h-full w-full bg-white rounded-xl overflow-auto border border-border shadow-sm p-6">

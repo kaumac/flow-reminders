@@ -2,11 +2,13 @@
 
 import { useForm } from "@tanstack/react-form"
 import { zodValidator } from "@tanstack/zod-form-adapter"
-import { PlusCircle } from "lucide-react"
+import { format } from "date-fns"
+import { ChevronDownIcon, PlusCircle } from "lucide-react"
 import { useState } from "react"
 import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
 import {
   Drawer,
   DrawerClose,
@@ -17,14 +19,18 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
 import { useCreateReminder } from "@/hooks/use-reminders"
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
+  scheduled_date: z.date().optional(),
+  scheduled_time: z.string().optional(),
 })
 
 export function ReminderDrawer() {
@@ -34,16 +40,36 @@ export function ReminderDrawer() {
   const form = useForm({
     defaultValues: {
       title: "",
-      description: "",
+      description: "" as string | undefined,
+      scheduled_date: undefined as Date | undefined,
+      scheduled_time: "10:30" as string | undefined,
     },
     onSubmit: async ({ value }) => {
       try {
-        await createReminder(value)
+        let scheduled_time_iso: string | undefined
+
+        if (value.scheduled_date) {
+          const date = new Date(value.scheduled_date)
+          if (value.scheduled_time) {
+            const [hours, minutes] = value.scheduled_time.split(":")
+            date.setHours(parseInt(hours), parseInt(minutes), 0, 0)
+          }
+          scheduled_time_iso = date.toISOString()
+        }
+
+        await createReminder({
+          title: value.title,
+          description: value.description,
+          scheduled_time: scheduled_time_iso,
+        })
         setOpen(false)
         form.reset()
       } catch (error) {
         console.error("Failed to create reminder", error)
       }
+    },
+    validators: {
+      onChange: formSchema,
     },
     validatorAdapter: zodValidator(),
   })
@@ -51,7 +77,7 @@ export function ReminderDrawer() {
   return (
     <Drawer direction="right" open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button>
+        <Button size="lg">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create Reminder
         </Button>
@@ -121,6 +147,55 @@ export function ReminderDrawer() {
                 </div>
               )}
             </form.Field>
+
+            <FieldGroup className="flex-row">
+              <form.Field name="scheduled_date">
+                {(field) => (
+                  <Field className="flex-1">
+                    <FieldLabel htmlFor="date-picker">Date</FieldLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          id="date-picker"
+                          className="h-10 w-full justify-between font-normal"
+                        >
+                          {field.state.value ? (
+                            format(field.state.value, "PPP")
+                          ) : (
+                            <span className="text-muted-foreground">Select date</span>
+                          )}
+                          <ChevronDownIcon className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.state.value}
+                          onSelect={(date) => field.handleChange(date)}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </Field>
+                )}
+              </form.Field>
+
+              <form.Field name="scheduled_time">
+                {(field) => (
+                  <Field className="w-32">
+                    <FieldLabel htmlFor="time-picker">Time</FieldLabel>
+                    <Input
+                      type="time"
+                      id="time-picker"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                    />
+                  </Field>
+                )}
+              </form.Field>
+            </FieldGroup>
             <form.Subscribe
               selector={(state) => [state.canSubmit, state.isSubmitting]}
             >
@@ -128,6 +203,7 @@ export function ReminderDrawer() {
                 <Button
                   type="submit"
                   className="w-full"
+                  size="lg"
                   disabled={!canSubmit || isPending}
                 >
                   {isPending || isSubmitting ? "Creating..." : "Create Reminder"}
@@ -138,7 +214,7 @@ export function ReminderDrawer() {
         </div>
         <DrawerFooter>
           <DrawerClose asChild>
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" size="lg">Cancel</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

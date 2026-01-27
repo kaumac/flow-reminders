@@ -6,12 +6,14 @@ export interface Reminder {
   created_at: string;
   title: string;
   description?: string;
+  scheduled_time?: string;
   user_id: number;
 }
 
 export interface CreateReminderPayload {
   title: string;
   description?: string;
+  scheduled_time?: string;
 }
 
 export function useCreateReminder() {
