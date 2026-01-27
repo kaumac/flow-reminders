@@ -28,6 +28,8 @@ class Session(SQLModel, table=True):
 class Reminder(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.now)
+    scheduled_time: Optional[datetime] = Field(default=None)
     title: str
     description: Optional[str] = None
+    status: str = Field(default="pending")
     user_id: int = Field(foreign_key="user.id")

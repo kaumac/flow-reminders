@@ -2,19 +2,30 @@ from contextlib import asynccontextmanager
 from typing import Optional
 import uuid
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session, select
-from src.database import create_db_and_tables, get_session
+from src.database import create_db_and_tables, get_session, scheduler_engine
 from src.models import User, Reminder, Session as DbSession
 from pydantic import BaseModel, field_validator
 import phonenumbers
-from fastapi import Request
+
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+
+# Dependency injection for scheduler if needed later
+scheduler = BackgroundScheduler(
+    jobstores={'default': SQLAlchemyJobStore(engine=scheduler_engine)}
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    scheduler.start()
+    print("Scheduler started")
     yield
+    scheduler.shutdown()
+    print("Scheduler shut down")
 
 app = FastAPI(lifespan=lifespan)
 
