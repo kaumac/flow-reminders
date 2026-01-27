@@ -3,6 +3,7 @@ from typing import Optional
 import os
 from dotenv import load_dotenv
 
+load_dotenv(".env.local")
 load_dotenv()
 import uuid
 from datetime import datetime, timedelta
@@ -38,6 +39,7 @@ def execute_reminder_call(reminder_id: int):
     """
     Job function called by APScheduler.
     """
+    print(f"[SCHEDULER] Job started for reminder_id: {reminder_id}")
     with SessionLocal() as session:
         reminder = session.exec(select(Reminder).where(Reminder.id == reminder_id)).first()
         if not reminder:

@@ -20,28 +20,9 @@ def make_reminder_call(phone_number: str, title: str, description: str):
         customer={
             "number": phone_number,
         },
-        assistant={
-            "name": "Flow Reminder Assistant",
+        assistant_id="f8441f2d-5313-4d26-badd-69d5449d8ceb",
+        assistant_overrides={
             "first_message": f"Hello, this is the Flow Reminder assistant calling you about a reminder for: {title}. Here are the details: {description}",
-            "model": {
-                "provider": "openai",
-                "model": "gpt-4o",
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": f"Hello, this is the Flow Reminder assistant calling you about a reminder for: {title}. Here are the details: {description}"
-                    }
-                ]
-            },
-            "voice": {
-                "provider": "11labs",
-                "voice_id": "rachel"
-            },
-            "transcriber": {
-                "provider": "deepgram",
-                "model": "nova-2",
-                "language": "en"
-            }
         }
     )
 

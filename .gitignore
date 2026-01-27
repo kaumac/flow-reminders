@@ -18,3 +18,4 @@ venv/
 apps/app/.env.local
 apps/api/database.db
 apps/api/scheduler_jobs.db
+apps/api/.env.local
