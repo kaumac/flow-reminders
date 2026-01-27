@@ -241,7 +241,7 @@ export function ReminderDrawer() {
 
             <Separator className="my-8" />
 
-            <FieldGroup className="flex-row">
+            <FieldGroup>
               <form.Field name="scheduled_date">
                 {(field) => (
                   <Field className="flex-1">
@@ -274,31 +274,33 @@ export function ReminderDrawer() {
                 )}
               </form.Field>
 
-              <form.Field name="scheduled_time">
-                {(field) => (
-                  <Field className="w-32">
-                    <FieldLabel htmlFor="time-picker">Time</FieldLabel>
-                    <Input
-                      type="time"
-                      id="time-picker"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                    />
-                  </Field>
-                )}
-              </form.Field>
-              <form.Field name="timezone">
-                {(field) => (
-                  <Field className="flex-[2]">
-                    <FieldLabel htmlFor="timezone-picker">Timezone</FieldLabel>
-                    <TimezonePicker
-                      value={field.state.value}
-                      onChange={field.handleChange}
-                    />
-                  </Field>
-                )}
-              </form.Field>
+              <div className="flex gap-4">
+                <form.Field name="scheduled_time">
+                  {(field) => (
+                    <Field className="w-32">
+                      <FieldLabel htmlFor="time-picker">Time</FieldLabel>
+                      <Input
+                        type="time"
+                        id="time-picker"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                      />
+                    </Field>
+                  )}
+                </form.Field>
+                <form.Field name="timezone">
+                  {(field) => (
+                    <Field className="flex-[2]">
+                      <FieldLabel htmlFor="timezone-picker">Timezone</FieldLabel>
+                      <TimezonePicker
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                      />
+                    </Field>
+                  )}
+                </form.Field>
+              </div>
             </FieldGroup>
 
             <form.Subscribe
@@ -331,7 +333,7 @@ export function ReminderDrawer() {
                       <Label htmlFor="r-user" className="flex items-center gap-2 cursor-pointer font-normal">
                         My number
                         {user?.phone_number && (
-                          <Badge variant="secondary" className="font-mono text-[10px] h-5 px-1.5 flex items-center gap-1">
+                          <Badge variant="secondary" className="gap-1">
                             {(() => {
                               try {
                                 const parsed = parsePhoneNumber(user.phone_number)
