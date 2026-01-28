@@ -76,10 +76,9 @@ def execute_reminder_call(reminder_id: int):
             session.add(reminder)
             session.commit()
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+# Get CORS origins from environment variable, default to localhost if not set
+cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
+origins = [origin.strip() for origin in cors_origins_str.split(",")]
 
 app.add_middleware(
     CORSMiddleware,

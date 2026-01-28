@@ -3,6 +3,7 @@ from vapi import Vapi
 
 VAPI_API_KEY = os.getenv("VAPI_API_KEY")
 VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
+VAPI_ASSISTANT_ID = os.getenv("VAPI_ASSISTANT_ID")
 
 client = Vapi(token=VAPI_API_KEY)
 
@@ -10,8 +11,8 @@ def make_reminder_call(phone_number: str, title: str, description: str):
     """
     Triggers an outbound call using Vapi with a system prompt override.
     """
-    if not VAPI_API_KEY or not VAPI_PHONE_NUMBER_ID:
-        print("Error: VAPI_API_KEY or VAPI_PHONE_NUMBER_ID not set in environment.")
+    if not VAPI_API_KEY or not VAPI_PHONE_NUMBER_ID or not VAPI_ASSISTANT_ID:
+        print("Error: VAPI_API_KEY, VAPI_PHONE_NUMBER_ID, or VAPI_ASSISTANT_ID not set in environment.")
         return None
 
     server_url = os.getenv("API_PUBLIC_URL")
@@ -28,7 +29,7 @@ def make_reminder_call(phone_number: str, title: str, description: str):
         customer={
             "number": phone_number,
         },
-        assistant_id="f8441f2d-5313-4d26-badd-69d5449d8ceb",
+        assistant_id=VAPI_ASSISTANT_ID,
         assistant_overrides=assistant_overrides
     )
 

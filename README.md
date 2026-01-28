@@ -77,9 +77,14 @@ Open `.env.local` and add your Vapi credentials:
 ```ini
 VAPI_API_KEY=your_vapi_private_api_key
 VAPI_PHONE_NUMBER_ID=your_vapi_phone_number_id
+VAPI_PHONE_NUMBER_ID=your_vapi_phone_number_id
+VAPI_ASSISTANT_ID=your_vapi_assistant_id
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
 > **Note**: You can get these keys from your [Vapi Dashboard](https://dashboard.vapi.ai/).
+>
+> **CORS Configuration**: The `CORS_ORIGINS` variable defines which frontend URLs are allowed to access the API. It accepts a comma-separated list of origins. Ensure this includes your frontend's URL (e.g., `http://localhost:3000` for local development).
 
 ---
 
