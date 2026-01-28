@@ -1,7 +1,7 @@
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlmodel import Field, SQLModel
-from pydantic import field_validator
+from pydantic import field_validator, field_serializer
 import phonenumbers
 
 class User(SQLModel, table=True):
@@ -34,3 +34,10 @@ class Reminder(SQLModel, table=True):
     status: str = Field(default="pending")
     phone_to_call: str = Field()
     user_id: int = Field(foreign_key="user.id")
+    vapi_call_id: Optional[str] = Field(default=None)
+
+    @field_serializer("scheduled_time")
+    def serialize_scheduled_time(self, v: Optional[datetime], _info):
+        if v and v.tzinfo is None:
+             return v.replace(tzinfo=timezone.utc)
+        return v

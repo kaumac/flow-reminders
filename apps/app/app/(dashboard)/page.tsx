@@ -72,7 +72,12 @@ export default function Home() {
           </div>
           <ReminderDrawer 
             open={isDrawerOpen} 
-            onOpenChange={setIsDrawerOpen} 
+            onOpenChange={(open) => {
+              setIsDrawerOpen(open)
+              if (!open) {
+                  setSelectedReminder(null)
+              }
+            }}
             reminder={selectedReminder}
           />
         </div>

@@ -13,7 +13,7 @@ from sqlmodel import Session, select, or_, func
 from src.database import create_db_and_tables, get_session, scheduler_engine, SessionLocal
 from src.models import User, Reminder, Session as DbSession
 from src.services.vapi import make_reminder_call
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field as PydanticField
 import phonenumbers
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -54,17 +54,22 @@ def execute_reminder_call(reminder_id: int):
         print(f"Executing call for reminder {reminder.id} to {reminder.phone_to_call}")
         
         try:
-            make_reminder_call(
+            call = make_reminder_call(
                 phone_number=reminder.phone_to_call,
                 title=reminder.title,
                 description=reminder.description or ""
             )
             
-            # Update status to completed
-            reminder.status = "completed"
+            if call and hasattr(call, 'id'):
+                reminder.vapi_call_id = call.id
+                reminder.status = "calling"
+                print(f"Call initiated for reminder {reminder.id}, call_id: {call.id}")
+            else:
+                reminder.status = "failed"
+                print(f"Failed to initiate call for reminder {reminder.id}")
+
             session.add(reminder)
             session.commit()
-            print(f"Reminder {reminder.id} marked as completed")
         except Exception as e:
             print(f"Error triggered for reminder {reminder.id}: {e}")
             reminder.status = "failed"
@@ -254,6 +259,48 @@ async def list_reminders(
         "limit": limit,
         "total_pages": (total + limit - 1) // limit
     }
+
+class VapiCall(BaseModel):
+    id: str
+
+class VapiWebhookMessage(BaseModel):
+    type: str
+    call: VapiCall
+    endedReason: Optional[str] = None
+    transcript: Optional[str] = None
+
+class VapiWebhookRequest(BaseModel):
+    message: VapiWebhookMessage
+
+@app.post("/webhook/vapi")
+async def vapi_webhook(
+    request: VapiWebhookRequest,
+    session: Session = Depends(get_session)
+):
+    print(f"Received Vapi Webhook: {request}")
+    if request.message.type == "end-of-call-report":
+        call_id = request.message.call.id
+        ended_reason = request.message.endedReason
+
+        # Find reminder by call_id
+        reminder = session.exec(select(Reminder).where(Reminder.vapi_call_id == call_id)).first()
+        
+        if reminder:
+            print(f"Updating status for reminder {reminder.id} based on call {call_id}. Reason: {ended_reason}")
+            
+            if ended_reason in ["assistant-said-end-call-phrase", "customer-ended-call"]:
+                reminder.status = "completed"
+            else:
+                # e.g., voicemail, silence-timeout, assistant-error
+                reminder.status = "failed"
+            
+            session.add(reminder)
+            session.commit()
+            print(f"Reminder {reminder.id} status updated to {reminder.status}")
+        else:
+            print(f"No reminder found for call_id: {call_id}")
+            
+    return {"status": "ok"}
 
 @app.delete("/reminders/{reminder_id}")
 async def delete_reminder(
