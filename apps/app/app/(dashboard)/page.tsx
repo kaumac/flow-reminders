@@ -1,5 +1,6 @@
 "use client";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { ReminderDrawer } from "@/components/reminder-drawer";
 import { useListReminders } from "@/hooks/use-reminders";
 import { RemindersTimeline } from "@/components/reminders-timeline";
@@ -7,6 +8,8 @@ import { RemindersTimeline } from "@/components/reminders-timeline";
 export default function Home() {
   const { data: reminders, isLoading, error } = useListReminders();
   const now = new Date();
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Sort upcoming by date ascending (soonest first)
   const upcomingReminders =
@@ -60,9 +63,12 @@ export default function Home() {
               Manage your tasks and future reminders.
             </p>
           </div>
-          <ReminderDrawer />
+          <ReminderDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} />
         </div>
-        <RemindersTimeline reminders={upcomingReminders} />
+        <RemindersTimeline 
+          reminders={upcomingReminders} 
+          onCreateReminder={() => setIsDrawerOpen(true)}
+        />
       </div>
 
       {/* Right Sidebar (Past) */}

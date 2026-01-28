@@ -89,8 +89,15 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>
 
-export function ReminderDrawer() {
-  const [open, setOpen] = useState(false)
+interface ReminderDrawerProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControlledOpen }: ReminderDrawerProps) {
+  const [internalOpen, setInternalOpen] = useState(false)
+  const open = controlledOpen ?? internalOpen
+  const setOpen = setControlledOpen ?? setInternalOpen
   const { data: user } = useUser()
   const { mutateAsync: createReminder, isPending } = useCreateReminder()
 
