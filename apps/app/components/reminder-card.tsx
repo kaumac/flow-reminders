@@ -2,8 +2,11 @@
 
 import { useState } from "react"
 import { Bell, Calendar, Phone, Pencil, Trash2, Loader2 } from "lucide-react"
-import { format } from "date-fns"
+import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
+// @ts-ignore
+import { countryCodeEmoji } from "country-code-emoji"
+import { parsePhoneNumber, type CountryCode } from "libphonenumber-js"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -62,15 +65,35 @@ export function ReminderCard({ reminder, onEdit, showTimelineIcon = false }: Rem
             {reminder.scheduled_time && (
                 <Badge variant="secondary" className="gap-1 w-fit text-[10px] sm:text-xs font-normal">
                   <Calendar className="h-3 w-3" />
-                  {format(new Date(reminder.scheduled_time), "PPP p")}
+                  {formatDistanceToNow(new Date(reminder.scheduled_time), { addSuffix: true })}
                 </Badge>
             )}
             <Badge
                 className="rounded-full flex items-center gap-1 text-[10px] sm:text-xs font-normal"
                 variant="secondary"
             >
-                <Phone className="h-3 w-3" />
-                {reminder.phone_to_call}
+                {(() => {
+                  try {
+                    const parsed = parsePhoneNumber(reminder.phone_to_call)
+                    if (parsed) {
+                      const country = parsed.country as CountryCode
+                      return (
+                        <>
+                          {country && <span className="text-sm leading-none">{countryCodeEmoji(country)}</span>}
+                          {parsed.formatInternational()}
+                        </>
+                      )
+                    }
+                  } catch (_) {
+                    // Ignore parsing errors
+                  }
+                  return (
+                    <>
+                      <Phone className="h-3 w-3" />
+                      {reminder.phone_to_call}
+                    </>
+                  )
+                })()}
             </Badge>
           </div>
         </div>
@@ -131,45 +154,7 @@ export function ReminderCard({ reminder, onEdit, showTimelineIcon = false }: Rem
             {/* Timeline Icon */}
             <div className="absolute left-px flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-background border z-10">
                 <Bell className="h-5 w-5 text-muted-foreground" />
-            </div>
-            
-            {/* Content wrapper to strip the Card-like padding if needed, 
-                but looking at original RemindersTimeline, it didn't have a border card? 
-                Actually original had: 
-                <div key={reminder.id} className="p-4 rounded-xl border bg-background/50 ..."> (in page.tsx for past)
-                BUT in RemindersTimeline it was:
-                <div className="space-y-3"> -> <h3>...
-                So RemindersTimeline style is DIFFERENT from Page.tsx style.
-            */}
-             
-             {/* 
-                I need to adapt. The user said "On reminders-timeline.tsx and page.tsx... display edit and delete buttons on hover".
-                
-                Page.tsx style: 
-                <div className="p-4 rounded-xl border bg-background/50 hover:bg-background transition-colors">
-                
-                RemindersTimeline.tsx style:
-                (Timeline structure) -> Content div -> h3, p, badges.
-                
-                I should apply the card style to RemindersTimeline content too? 
-                Or keep the existing style and just add buttons?
-                Reference: "On reminders-timeline.tsx ... display edit and delete buttons".
-                The current RemindersTimeline has items in a timeline flow. Adding a border/card style might disrupt it 
-                or improve it. 
-                
-                The user's Page.tsx snippet shows a Card style for Past Reminders.
-                The RemindersTimeline is for Upcoming.
-                
-                I will make ReminderCard adaptable or just use the card style for both which looks cleaner.
-                Or, I'll stick to the original markup for RemindersTimeline but wrap it in a group relative div to position buttons.
-             */}
-             
-             {/* Let's try to maintain structural styling of Timeline but inject buttons. 
-                 If I use ReminderCard here, it brings its own border and padding.
-                 If I replace the inner content of Timeline item with ReminderCard, 
-                 it will look like a Card attached to a timeline point. That is a good UI pattern.
-             */}
-             
+            </div>   
              {content}
         </div>
       )

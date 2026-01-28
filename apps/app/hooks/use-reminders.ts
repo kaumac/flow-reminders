@@ -32,11 +32,26 @@ export function useCreateReminder() {
   });
 }
 
-export function useListReminders() {
+export interface ReminderListResponse {
+  items: Reminder[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface UseListRemindersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: string;
+}
+
+export function useListReminders(params: UseListRemindersParams = {}) {
   return useQuery({
-    queryKey: ["reminders"],
+    queryKey: ["reminders", params],
     queryFn: async () => {
-      const { data } = await api.get<Reminder[]>("/reminders");
+      const { data } = await api.get<ReminderListResponse>("/reminders", { params });
       return data;
     },
   });

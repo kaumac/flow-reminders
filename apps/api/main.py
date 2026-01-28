@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_, func
 from src.database import create_db_and_tables, get_session, scheduler_engine, SessionLocal
 from src.models import User, Reminder, Session as DbSession
 from src.services.vapi import make_reminder_call
@@ -215,11 +215,45 @@ async def create_reminder(
 
 @app.get("/reminders")
 async def list_reminders(
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    status: Optional[str] = None,
     user: User = Depends(get_current_user),
     session: Session = Depends(get_session)
 ):
-    reminders = session.exec(select(Reminder).where(Reminder.user_id == user.id)).all()
-    return reminders
+    offset = (page - 1) * limit
+    
+    filters = [Reminder.user_id == user.id]
+    
+    if search:
+        filters.append(or_(Reminder.title.contains(search), Reminder.description.contains(search)))
+        
+    if status and status.lower() != "all":
+        s = status.lower()
+        if s == "scheduled":
+            s = "pending" # Map UI 'Scheduled' to DB 'pending'
+        filters.append(Reminder.status == s)
+
+    # Get Total Count
+    total = session.exec(select(func.count()).where(*filters)).one()
+    
+    # Get Items
+    items = session.exec(
+        select(Reminder)
+        .where(*filters)
+        .order_by(Reminder.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "total_pages": (total + limit - 1) // limit
+    }
 
 @app.delete("/reminders/{reminder_id}")
 async def delete_reminder(

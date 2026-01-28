@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useState } from "react"
 import Cookies from "js-cookie"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
+import Link from "next/link"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -40,6 +41,7 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   const { data: user } = useUser()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
 
   const handleLogout = () => {
     Cookies.remove("session_token")
@@ -78,9 +80,19 @@ export function Sidebar({ className, ...props }: SidebarProps) {
           </div>
           
           <div className="w-full flex flex-col items-center">
-            <NavButton icon={Home} label="Home" active />
+            <NavButton 
+              icon={Home} 
+              label="Home" 
+              href="/" 
+              active={pathname === "/"} 
+            />
             <div className="w-8 h-px bg-gray-100 my-4" />
-            <NavButton icon={PlusCircle} label="Reminders" />
+            <NavButton 
+              icon={PlusCircle} 
+              label="Reminders" 
+              href="/reminders" 
+              active={pathname.startsWith("/reminders")} 
+            />
           </div>
         </div>
         
@@ -138,15 +150,9 @@ export function Sidebar({ className, ...props }: SidebarProps) {
   )
 }
 
-function NavButton({ icon: Icon, label, active }: { icon: LucideIcon; label: string; active?: boolean }) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "w-full flex flex-col items-center justify-center gap-1.5 py-4 transition-all relative group",
-        active ? "text-black" : "text-gray-400 hover:text-black"
-      )}
-    >
+function NavButton({ icon: Icon, label, active, href }: { icon: LucideIcon; label: string; active?: boolean; href: string }) {
+  const content = (
+    <>
       <Icon className={cn("h-6 w-6 transition-transform group-hover:scale-110", active ? "stroke-[2.5px]" : "stroke-[2px]")} />
       <span className={cn("text-[10px] font-semibold tracking-tight transition-colors", active ? "text-black" : "text-gray-500")}>
         {label}
@@ -154,7 +160,32 @@ function NavButton({ icon: Icon, label, active }: { icon: LucideIcon; label: str
       {active && (
         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-black rounded-l-full" />
       )}
-    </button>
+    </>
+  )
+
+  if (active) {
+    return (
+      <div
+        className={cn(
+          "w-full flex flex-col items-center justify-center gap-1.5 py-4 relative group cursor-default",
+          "text-black"
+        )}
+      >
+        {content}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "w-full flex flex-col items-center justify-center gap-1.5 py-4 transition-all relative group",
+        "text-gray-400 hover:text-black"
+      )}
+    >
+      {content}
+    </Link>
   )
 }
 

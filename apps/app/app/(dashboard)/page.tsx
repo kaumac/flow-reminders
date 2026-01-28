@@ -7,7 +7,8 @@ import { RemindersTimeline } from "@/components/reminders-timeline";
 import { ReminderCard } from "@/components/reminder-card";
 
 export default function Home() {
-  const { data: reminders, isLoading, error } = useListReminders();
+  const { data, isLoading, error } = useListReminders({ limit: 100 });
+  const reminders = data?.items;
   const now = new Date();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
