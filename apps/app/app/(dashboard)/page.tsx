@@ -1,6 +1,6 @@
 "use client";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ReminderDrawer } from "@/components/reminder-drawer";
 import { useListReminders } from "@/hooks/use-reminders";
 import { RemindersTimeline } from "@/components/reminders-timeline";
@@ -34,13 +34,7 @@ export default function Home() {
           new Date(a.scheduled_time!).getTime()
       ) ?? [];
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-      </div>
-    );
-  }
+
 
   if (error) {
     return (
@@ -68,6 +62,7 @@ export default function Home() {
         <RemindersTimeline 
           reminders={upcomingReminders} 
           onCreateReminder={() => setIsDrawerOpen(true)}
+          isLoading={isLoading}
         />
       </div>
 
@@ -81,7 +76,18 @@ export default function Home() {
             </span>
           </h2>
           <div className="space-y-4">
-            {pastReminders.length === 0 ? (
+            {isLoading ? (
+               Array.from({ length: 3 }).map((_, i) => (
+                 <div key={i} className="p-4 rounded-xl border bg-background/50 space-y-3">
+                    <Skeleton className="h-4 w-3/4" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-5/6" />
+                    </div>
+                    <Skeleton className="h-2 w-1/3" />
+                 </div>
+               ))
+            ) : pastReminders.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">
                 No past reminders found.
               </p>

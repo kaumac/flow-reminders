@@ -7,6 +7,7 @@ interface ContentPlaceholderProps {
   description: string;
   buttonLabel: string;
   buttonOnPress?: () => void;
+  buttonIcon?: React.ComponentType<{ className?: string }>;
 }
 
 export function ContentPlaceholder({
@@ -15,6 +16,7 @@ export function ContentPlaceholder({
   description,
   buttonLabel,
   buttonOnPress,
+  buttonIcon: ButtonIcon,
 }: ContentPlaceholderProps) {
   return (
     <div className="flex flex-col items-center justify-center text-center w-full p-16">
@@ -33,11 +35,13 @@ export function ContentPlaceholder({
       </p>
       {buttonOnPress && (
         <Button onClick={buttonOnPress} size="lg">
+          {ButtonIcon && <ButtonIcon className="mr-2 h-4 w-4" />}
           {buttonLabel}
         </Button>
       )}
       {!buttonOnPress && (
           <Button disabled size="lg">
+            {ButtonIcon && <ButtonIcon className="mr-2 h-4 w-4" />}
             {buttonLabel}
           </Button>
       )}

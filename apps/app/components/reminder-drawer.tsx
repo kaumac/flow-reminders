@@ -33,6 +33,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { PhoneInput } from "@/components/ui/phone-input"
 import { TimezonePicker } from "@/components/ui/timezone-picker"
 import { useUser } from "@/hooks/use-user"
+// @ts-ignore
 import { countryCodeEmoji } from "country-code-emoji"
 import { parsePhoneNumber, isValidPhoneNumber, type CountryCode } from "libphonenumber-js"
 
@@ -70,21 +71,7 @@ const formSchema = z.object({
     }
   }
 
-  if (data.phone_type === "custom") {
-    if (!data.custom_phone) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Phone number is required",
-        path: ["custom_phone"],
-      })
-    } else if (!isValidPhoneNumber(data.custom_phone)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Invalid phone number",
-        path: ["custom_phone"],
-      })
-    }
-  }
+
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -102,33 +89,21 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
   const { mutateAsync: createReminder, isPending } = useCreateReminder()
 
   const form = useForm({
+    // @ts-ignore
     validatorAdapter: zodValidator(),
+    validators: {
+      onChange: formSchema,
+    },
     defaultValues: {
       title: "",
       description: "",
-      scheduled_date: undefined,
+      scheduled_date: undefined as unknown as Date,
       scheduled_time: "10:30",
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       phone_type: "user",
       custom_phone: "",
     } as FormValues,
-    onSubmit: async ({ value, formApi }) => {
-      // Manual validation on submit
-      const validation = formSchema.safeParse(value)
-      if (!validation.success) {
-        const errors = validation.error.flatten().fieldErrors
-        // Set errors for fields
-        Object.keys(value).forEach((key) => {
-          const fieldKey = key as keyof typeof value
-          const fieldErrors = errors[fieldKey] // access specific field error
-          
-          formApi.setFieldMeta(fieldKey, (prev) => ({
-            ...prev,
-            errors: fieldErrors ? fieldErrors : [],
-          }))
-        })
-        return
-      }
+    onSubmit: async ({ value, formApi }: { value: any, formApi: any }) => {
 
       try {
         let scheduled_time_iso: string | undefined
@@ -157,6 +132,8 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
           }
         }
 
+
+
         const phone_to_call = value.phone_type === "user" 
           ? user?.phone_number 
           : value.custom_phone
@@ -180,7 +157,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
       }
     },
 
-  } as any)
+  } as any) as any
 
   return (
     <Drawer direction="right" open={open} onOpenChange={setOpen}>
@@ -206,7 +183,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
         >
           <div className="p-4 pb-0 flex-1 overflow-y-auto space-y-4">
             <form.Field name="title">
-              {(field) => (
+              {(field: any) => (
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
                   <Input
@@ -217,16 +194,22 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
-                  {field.state.meta.errors ? (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.map((e) => e?.message || e).join(", ")}
-                    </p>
-                  ) : null}
+                  <form.Subscribe
+                    selector={(state: any) => state.isSubmitted}
+                  >
+                    {(isSubmitted) => (
+                      (field.state.meta.isTouched || isSubmitted) && field.state.meta.errors.length ? (
+                        <p className="text-sm font-medium text-destructive">
+                          {(field.state.meta.errors as any[]).map((e) => e?.message || e).join(", ")}
+                        </p>
+                      ) : null
+                    )}
+                  </form.Subscribe>
                 </div>
               )}
             </form.Field>
             <form.Field name="description">
-              {(field) => (
+              {(field: any) => (
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -237,11 +220,17 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
-                  {field.state.meta.errors ? (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.map((e) => e?.message || e).join(", ")}
-                    </p>
-                  ) : null}
+                  <form.Subscribe
+                    selector={(state: any) => state.isSubmitted}
+                  >
+                    {(isSubmitted) => (
+                      (field.state.meta.isTouched || isSubmitted) && field.state.meta.errors.length ? (
+                        <p className="text-sm font-medium text-destructive">
+                          {(field.state.meta.errors as any[]).map((e) => e?.message || e).join(", ")}
+                        </p>
+                      ) : null
+                    )}
+                  </form.Subscribe>
                 </div>
               )}
             </form.Field>
@@ -250,7 +239,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
 
             <FieldGroup>
               <form.Field name="scheduled_date">
-                {(field) => (
+                {(field: any) => (
                   <Field className="flex-1">
                     <FieldLabel htmlFor="date-picker">Date</FieldLabel>
                     <Popover>
@@ -272,7 +261,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                         <Calendar
                           mode="single"
                           selected={field.state.value}
-                          onSelect={(date) => field.handleChange(date)}
+                          onSelect={(date) => field.handleChange(date as Date)}
                           initialFocus
                         />
                       </PopoverContent>
@@ -283,7 +272,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
 
               <div className="flex gap-4">
                 <form.Field name="scheduled_time">
-                  {(field) => (
+                  {(field: any) => (
                     <Field className="w-32">
                       <FieldLabel htmlFor="time-picker">Time</FieldLabel>
                       <Input
@@ -297,7 +286,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                   )}
                 </form.Field>
                 <form.Field name="timezone">
-                  {(field) => (
+                  {(field: any) => (
                     <Field className="flex-[2]">
                       <FieldLabel htmlFor="timezone-picker">Timezone</FieldLabel>
                       <TimezonePicker
@@ -311,11 +300,11 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
             </FieldGroup>
 
             <form.Subscribe
-              selector={(state) => state.fieldMeta.scheduled_date?.errors}
+              selector={(state: any) => [state.fieldMeta.scheduled_date?.errors, state.fieldMeta.scheduled_date?.isTouched, state.isSubmitted]}
             >
-              {(errors) => {
-                const errorMsg = errors?.map((e) => e?.message || String(e)).join(", ")
-                if (!errorMsg) return null
+              {([errors, isTouched, isSubmitted]) => {
+                const errorMsg = (errors as any[])?.map((e: any) => e?.message || String(e)).join(", ")
+                if (!errorMsg || (!isTouched && !isSubmitted)) return null
                 return (
                   <div className="mt-2 text-center">
                     <Badge variant="destructive">{errorMsg}</Badge>
@@ -329,7 +318,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
             <div className="space-y-4">
               <Label className="block mb-4">What number should we call?</Label>
               <form.Field name="phone_type">
-                {(field) => (
+                {(field: any) => (
                   <RadioGroup
                     value={field.state.value}
                     onValueChange={(val) => field.handleChange(val as "user" | "custom")}
@@ -371,19 +360,36 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                       {field.state.value === "custom" && (
                         <form.Field 
                           name="custom_phone"
+                          validators={{
+                            onBlur: ({ value, fieldApi }: any) => {
+                              const phoneType = fieldApi.form.getFieldValue("phone_type")
+                              if (phoneType === "custom") {
+                                if (!value) return "Phone number is required"
+                                if (!isValidPhoneNumber(value)) return "Invalid phone number"
+                              }
+                              return undefined
+                            }
+                          }}
                         >
-                          {(customField) => (
+                          {(customField: any) => (
                             <div className="pl-7 space-y-2">
                               <PhoneInput
                                 placeholder="Enter phone number"
                                 value={customField.state.value}
                                 onChange={customField.handleChange}
+                                onBlur={customField.handleBlur}
                               />
-                              {customField.state.meta.errors ? (
-                                <p className="text-sm font-medium text-destructive">
-                                  {customField.state.meta.errors.join(", ")}
-                                </p>
-                              ) : null}
+                              <form.Subscribe
+                                selector={(state: any) => state.isSubmitted}
+                              >
+                                {(isSubmitted: any) => (
+                                  (customField.state.meta.isTouched || isSubmitted) && customField.state.meta.errors.length ? (
+                                    <p className="text-sm font-medium text-destructive">
+                                      {(customField.state.meta.errors as any[]).join(", ")}
+                                    </p>
+                                  ) : null
+                                )}
+                              </form.Subscribe>
                             </div>
                           )}
                         </form.Field>
@@ -397,14 +403,14 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
 
           <DrawerFooter>
             <form.Subscribe
-              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              selector={(state: any) => [state.canSubmit, state.isSubmitting]}
             >
-              {([canSubmit, isSubmitting]) => (
+              {([, isSubmitting]) => (
                 <Button
                   type="submit"
                   className="w-full"
                   size="lg"
-                  disabled={!canSubmit || isPending}
+                  disabled={isPending}
                 >
                   {isPending || isSubmitting ? "Creating..." : "Create Reminder"}
                 </Button>
