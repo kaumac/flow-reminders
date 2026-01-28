@@ -1,10 +1,10 @@
-"use client"
 
+import { useEffect } from "react"
 import { useForm } from "@tanstack/react-form"
 import { zodValidator } from "@tanstack/zod-form-adapter"
 import { format } from "date-fns"
 import { fromZonedTime } from "date-fns-tz"
-import { ChevronDownIcon, PlusCircle } from "lucide-react"
+import { ChevronDownIcon, PlusCircle, Save } from "lucide-react"
 import { useState } from "react"
 import { z } from "zod"
 
@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
-import { useCreateReminder } from "@/hooks/use-reminders"
+import { useCreateReminder, useUpdateReminder, type Reminder } from "@/hooks/use-reminders"
 import { Separator } from "@/components/ui/separator"
 
 import { Badge } from "@/components/ui/badge"
@@ -79,14 +79,18 @@ type FormValues = z.infer<typeof formSchema>
 interface ReminderDrawerProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  reminder?: Reminder | null
 }
 
-export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControlledOpen }: ReminderDrawerProps) {
+export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControlledOpen, reminder }: ReminderDrawerProps) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen ?? internalOpen
   const setOpen = setControlledOpen ?? setInternalOpen
   const { data: user } = useUser()
-  const { mutateAsync: createReminder, isPending } = useCreateReminder()
+  const { mutateAsync: createReminder, isPending: isCreating } = useCreateReminder()
+  const { mutateAsync: updateReminder, isPending: isUpdating } = useUpdateReminder()
+  
+  const isPending = isCreating || isUpdating
 
   const form = useForm({
     // @ts-ignore
@@ -132,8 +136,6 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
           }
         }
 
-
-
         const phone_to_call = value.phone_type === "user" 
           ? user?.phone_number 
           : value.custom_phone
@@ -144,34 +146,84 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
           return
         }
 
-        await createReminder({
-          title: value.title,
-          description: value.description,
-          scheduled_time: scheduled_time_iso,
-          phone_to_call: phone_to_call,
-        })
+        if (reminder) {
+          await updateReminder({
+            id: reminder.id,
+            payload: {
+              title: value.title,
+              description: value.description,
+              scheduled_time: scheduled_time_iso,
+              phone_to_call: phone_to_call,
+            }
+          })
+        } else {
+          await createReminder({
+            title: value.title,
+            description: value.description,
+            scheduled_time: scheduled_time_iso,
+            phone_to_call: phone_to_call,
+          })
+        }
         setOpen(false)
         form.reset()
       } catch (error) {
-        console.error("Failed to create reminder", error)
+        console.error("Failed to save reminder", error)
       }
     },
 
   } as any) as any
 
+  useEffect(() => {
+    if (open) {
+      if (reminder) {
+        // Pre-fill form
+        const scheduledTime = reminder.scheduled_time ? new Date(reminder.scheduled_time) : undefined
+        let scheduled_date = scheduledTime
+        let scheduled_time = "10:30"
+        
+        if (scheduledTime) {
+           scheduled_time = format(scheduledTime, "HH:mm")
+        }
+
+        const isUserPhone = user?.phone_number && reminder.phone_to_call === user.phone_number
+
+        form.reset({
+            title: reminder.title,
+            description: reminder.description || "",
+            scheduled_date: scheduled_date,
+            scheduled_time: scheduled_time,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Default to local as we don't store timezone
+            phone_type: isUserPhone ? "user" : "custom",
+            custom_phone: isUserPhone ? "" : reminder.phone_to_call,
+        })
+      } else {
+        // Reset to empty
+        form.reset({
+            title: "",
+            description: "",
+            scheduled_date: undefined as unknown as Date,
+            scheduled_time: "10:30",
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            phone_type: "user",
+            custom_phone: "",
+        })
+      }
+    }
+  }, [open, reminder, user, form])
+
   return (
     <Drawer direction="right" open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         <Button size="lg">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Create Reminder
+          {reminder ? <Save className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+          {reminder ? "Edit Reminder" : "Create Reminder"}
         </Button>
       </DrawerTrigger>
       {/* Overriding default bottom-sheet styles to create a proper right-side drawer */}
       <DrawerContent className="inset-x-auto inset-y-0 right-0 top-0 mt-0 h-full w-[400px] rounded-none border-l">
         <DrawerHeader>
-          <DrawerTitle>Create Reminder</DrawerTitle>
-          <DrawerDescription>Add a new reminder to your list.</DrawerDescription>
+          <DrawerTitle>{reminder ? "Edit Reminder" : "Create Reminder"}</DrawerTitle>
+          <DrawerDescription>{reminder ? "Update the details of your reminder." : "Add a new reminder to your list."}</DrawerDescription>
         </DrawerHeader>
         <form
           onSubmit={(e) => {
@@ -306,9 +358,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                 const errorMsg = (errors as any[])?.map((e: any) => e?.message || String(e)).join(", ")
                 if (!errorMsg || (!isTouched && !isSubmitted)) return null
                 return (
-                  <div className="mt-2 text-center">
-                    <Badge variant="destructive">{errorMsg}</Badge>
-                  </div>
+                  <p className="text-sm font-medium text-destructive">{errorMsg}</p>
                 )
               }}
             </form.Subscribe>
@@ -412,7 +462,7 @@ export function ReminderDrawer({ open: controlledOpen, onOpenChange: setControll
                   size="lg"
                   disabled={isPending}
                 >
-                  {isPending || isSubmitting ? "Creating..." : "Create Reminder"}
+                  {isPending || isSubmitting ? (reminder ? "Saving..." : "Creating...") : (reminder ? "Save Changes" : "Create Reminder")}
                 </Button>
               )}
             </form.Subscribe>

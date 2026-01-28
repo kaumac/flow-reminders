@@ -41,3 +41,32 @@ export function useListReminders() {
     },
   });
 }
+
+export type UpdateReminderPayload = CreateReminderPayload;
+
+export function useUpdateReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: UpdateReminderPayload }) => {
+      const { data } = await api.put<Reminder>(`/reminders/${id}`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+    },
+  });
+}
+
+export function useDeleteReminder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/reminders/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+    },
+  });
+}

@@ -2,14 +2,26 @@
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ReminderDrawer } from "@/components/reminder-drawer";
-import { useListReminders } from "@/hooks/use-reminders";
+import { useListReminders, type Reminder } from "@/hooks/use-reminders";
 import { RemindersTimeline } from "@/components/reminders-timeline";
+import { ReminderCard } from "@/components/reminder-card";
 
 export default function Home() {
   const { data: reminders, isLoading, error } = useListReminders();
   const now = new Date();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+
+  const handleCreateReminder = () => {
+      setSelectedReminder(null);
+      setIsDrawerOpen(true);
+  };
+
+  const handleEditReminder = (reminder: Reminder) => {
+      setSelectedReminder(reminder);
+      setIsDrawerOpen(true);
+  };
 
   // Sort upcoming by date ascending (soonest first)
   const upcomingReminders =
@@ -57,11 +69,16 @@ export default function Home() {
               Manage your tasks and future reminders.
             </p>
           </div>
-          <ReminderDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} />
+          <ReminderDrawer 
+            open={isDrawerOpen} 
+            onOpenChange={setIsDrawerOpen} 
+            reminder={selectedReminder}
+          />
         </div>
         <RemindersTimeline 
           reminders={upcomingReminders} 
-          onCreateReminder={() => setIsDrawerOpen(true)}
+          onCreateReminder={handleCreateReminder}
+          onEdit={handleEditReminder}
           isLoading={isLoading}
         />
       </div>
@@ -93,22 +110,11 @@ export default function Home() {
               </p>
             ) : (
               pastReminders.map((reminder) => (
-                <div
-                  key={reminder.id}
-                  className="p-4 rounded-xl border bg-background/50 hover:bg-background transition-colors"
-                >
-                  <h4 className="font-medium text-sm line-clamp-1">
-                    {reminder.title}
-                  </h4>
-                  {reminder.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {reminder.description}
-                    </p>
-                  )}
-                  <p className="text-[10px] text-muted-foreground mt-2 uppercase tracking-wider font-medium">
-                    {new Date(reminder.scheduled_time!).toLocaleString()}
-                  </p>
-                </div>
+                <ReminderCard 
+                    key={reminder.id}
+                    reminder={reminder}
+                    onEdit={handleEditReminder}
+                />
               ))
             )}
           </div>

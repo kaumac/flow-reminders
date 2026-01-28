@@ -220,3 +220,122 @@ async def list_reminders(
 ):
     reminders = session.exec(select(Reminder).where(Reminder.user_id == user.id)).all()
     return reminders
+
+@app.delete("/reminders/{reminder_id}")
+async def delete_reminder(
+    reminder_id: int,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    reminder = session.exec(select(Reminder).where(Reminder.id == reminder_id, Reminder.user_id == user.id)).first()
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+    
+    # Remove from scheduler if exists
+    job_id = f"reminder_{reminder.id}"
+    try:
+        if scheduler.get_job(job_id):
+            scheduler.remove_job(job_id)
+            print(f"Removed job {job_id}")
+    except Exception as e:
+        print(f"Error removing job {job_id}: {e}")
+
+    session.delete(reminder)
+    session.commit()
+    return {"message": "Reminder deleted successfully"}
+
+class UpdateReminderRequest(BaseModel):
+    title: str
+    description: str
+    scheduled_time: datetime
+    phone_to_call: str
+
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title is required")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Description is required")
+        return v
+
+    @field_validator("scheduled_time")
+    @classmethod
+    def validate_future_date(cls, v: datetime) -> datetime:
+        if v.tzinfo:
+            now = datetime.now(v.tzinfo)
+        else:
+            now = datetime.now()
+        
+        # For updates, we might allow keeping an old time if not changing it? 
+        # But usually you update to a new time. 
+        # If the user edits a past reminder, they likely want to reschedule it.
+        # If they just edit the title of a past reminder, strictly speaking validation might fail if we enforce future.
+        # However, the requirement says "displaying current reminder data and allowing user to update it".
+        # If it's a past reminder, updating it to a past time makes no sense for a "Reminder".
+        # So we enforce future time for updates too if it's being scheduled.
+        
+        if v <= now:
+            raise ValueError("Scheduled time must be in the future")
+        return v
+
+@app.put("/reminders/{reminder_id}")
+async def update_reminder(
+    reminder_id: int,
+    reminder_data: UpdateReminderRequest,
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    reminder = session.exec(select(Reminder).where(Reminder.id == reminder_id, Reminder.user_id == user.id)).first()
+    if not reminder:
+        raise HTTPException(status_code=404, detail="Reminder not found")
+
+    reminder.title = reminder_data.title
+    reminder.description = reminder_data.description
+    reminder.phone_to_call = reminder_data.phone_to_call
+    
+    old_time = reminder.scheduled_time
+    reminder.scheduled_time = reminder_data.scheduled_time
+    
+    # If updated to future, ensure it's pending
+    if reminder.scheduled_time > datetime.now(reminder.scheduled_time.tzinfo or None):
+        reminder.status = "pending"
+
+    session.add(reminder)
+    session.commit()
+    session.refresh(reminder)
+
+    # Handle Scheduler
+    job_id = f"reminder_{reminder.id}"
+    try:
+        existing_job = scheduler.get_job(job_id)
+        
+        # If exists, reschedule
+        if existing_job:
+            scheduler.reschedule_job(
+                job_id, 
+                trigger='date', 
+                run_date=reminder.scheduled_time
+            )
+            print(f"Rescheduled job {job_id} to {reminder.scheduled_time}")
+        else:
+            # If not exists (e.g. was past/completed), add new if it is in future
+            # (Validator ensures it is in future, so we add it)
+            scheduler.add_job(
+                execute_reminder_call,
+                "date",
+                run_date=reminder.scheduled_time,
+                args=[reminder.id],
+                id=job_id
+            )
+            print(f"Scheduled new job for updated reminder {reminder.id} at {reminder.scheduled_time}")
+
+    except Exception as e:
+        print(f"Error updating schedule for reminder {reminder.id}: {e}")
+
+    return reminder
