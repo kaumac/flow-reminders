@@ -7,6 +7,7 @@ import axios from "axios";
 import { isValidPhoneNumber } from "libphonenumber-js";
 import { api } from "@/lib/api";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { Button } from "@/components/ui/button";
 
 export default function SignInPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -84,13 +85,13 @@ export default function SignInPage() {
             <p className="text-sm text-red-500 font-medium">{error}</p>
           )}
         </div>
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-black px-4 py-2 text-white hover:bg-gray-800 disabled:opacity-50"
+          size="lg"
         >
           {loading ? "Signing in..." : "Sign In"}
-        </button>
+        </Button>
       </form>
     </div>
   );
